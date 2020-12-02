@@ -8,22 +8,14 @@
 
 */
 
-mod class;
-pub use class::Class;
+mod collidable;
+pub use collidable::Collidable;
 
-mod user_data;
-pub(crate) use user_data::UserData;
+mod releasable;
+pub use releasable::Releasable;
 
-pub trait PxFlags: Copy {
-    /// The target physx_sys flags type.
-    type Target;
-    /// Convert to Px type.
-    fn into_px(self) -> Self::Target;
-    /// Convert to BitFlags<> type.
-    fn from_px(flags: Self::Target) -> Self;
-}
+mod to_flags;
+pub use to_flags::ToFlags;
 
-pub(crate) trait IntoPx {
-    type Target;
-    unsafe fn into_px(self) -> Self::Target;
-}
+mod get_raw;
+pub use get_raw::GetRaw;

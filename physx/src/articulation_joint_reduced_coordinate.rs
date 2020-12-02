@@ -7,31 +7,13 @@
 /*!
 
 */
-use super::{articulation_link::ArticulationDriveType, traits::Class};
-
-use physx_sys::{
-    PxArticulationAxis, PxArticulationJointDriveType,
-    PxArticulationJointReducedCoordinate_getJointType,
-    PxArticulationJointReducedCoordinate_setDriveTarget_mut,
-    PxArticulationJointReducedCoordinate_setDrive_mut,
-    PxArticulationJointReducedCoordinate_setJointType_mut,
-    PxArticulationJointReducedCoordinate_setLimit_mut,
-    PxArticulationJointReducedCoordinate_setMotion_mut,
-    /*
-    PxArticulationJointReducedCoordinate_getDrive_mut,
-    PxArticulationJointReducedCoordinate_getDriveTarget_mut,
-    PxArticulationJointReducedCoordinate_getDriveVelocity_mut,
-    PxArticulationJointReducedCoordinate_getFrictionCoefficient,
-    PxArticulationJointReducedCoordinate_getLimit_mut,
-    PxArticulationJointReducedCoordinate_getMaxJointVelocity,
-    PxArticulationJointReducedCoordinate_getMotion,
-    PxArticulationJointReducedCoordinate_setDriveVelocity_mut,
-    PxArticulationJointReducedCoordinate_setMaxJointVelocity_mut,
-    PxArticulationJointReducedCoordinate_setFrictionCoefficient_mut,
-    */
-    //PxArticulationJointReducedCoordinate_getConcreteTypeName,
-    PxArticulationJointType, PxArticulationMotion,
+use super::{
+    articulation_joint_base::*, articulation_link::ArticulationDriveType, body::*, px_type::*,
 };
+use glam::{Mat4, Vec3};
+use log::*;
+use physx_macros::*;
+use physx_sys::*;
 
 /* todo[tolsson]
 add a wrapper struct for PxArticulationJointReducedCoordinate (or trait object)
@@ -173,49 +155,33 @@ impl From<PxArticulationJointType::Enum> for ArticulationJointType {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Section ArticulationJointReducedCoordinate
+// Section BUILDER
+////////////////////////////////////////////////////////////////////////////////
 
-/// PxArticulationJointReducedCoordinate new type wrapper.
-#[repr(transparent)]
-pub struct ArticulationJointReducedCoordinate {
-    obj: physx_sys::PxArticulationJointReducedCoordinate,
-}
-
-crate::DeriveClassForNewType!(
-    ArticulationJointReducedCoordinate: PxArticulationJointReducedCoordinate,
-    PxArticulationBase,
-    PxBase
-);
-
-unsafe impl Send for ArticulationJointReducedCoordinate {}
-unsafe impl Sync for ArticulationJointReducedCoordinate {}
-
+#[physx_type(inherit = "ArticulationJointBase")]
 impl ArticulationJointReducedCoordinate {
     /// Set target angle around axis for this joint
-    pub fn set_drive_target(&mut self, rot: f32, axis: ArticulationAxis) {
+    pub fn set_target(&mut self, rot: f32, axis: ArticulationAxis) {
         unsafe {
             PxArticulationJointReducedCoordinate_setDriveTarget_mut(
-                self.as_mut_ptr(),
+                self.get_raw_mut(),
                 axis.into(),
                 rot,
             )
         };
     }
 
-    /// Set the Joint type.
-    pub fn set_joint_type(&mut self, joint_type: ArticulationJointType) {
+    /// set joint type
+    pub fn set_type(&mut self, _type: ArticulationJointType) {
         unsafe {
-            PxArticulationJointReducedCoordinate_setJointType_mut(
-                self.as_mut_ptr(),
-                joint_type.into(),
-            )
+            PxArticulationJointReducedCoordinate_setJointType_mut(self.get_raw_mut(), _type.into())
         }
     }
 
-    /// Get the joint type.
-    pub fn get_joint_type(&self) -> ArticulationJointType {
+    /// get joint type
+    pub fn get_type(&self) -> ArticulationJointType {
         ArticulationJointType::from(unsafe {
-            PxArticulationJointReducedCoordinate_getJointType(self.as_ptr())
+            PxArticulationJointReducedCoordinate_getJointType(self.get_raw())
         })
     }
 
@@ -223,7 +189,7 @@ impl ArticulationJointReducedCoordinate {
     pub fn set_limit(&mut self, axis: ArticulationAxis, min: f32, max: f32) {
         unsafe {
             PxArticulationJointReducedCoordinate_setLimit_mut(
-                self.as_mut_ptr(),
+                self.get_raw_mut(),
                 axis.into(),
                 min,
                 max,
@@ -238,28 +204,117 @@ impl ArticulationJointReducedCoordinate {
         stiffness: f32,
         damping: f32,
         max_force: f32,
-        drive_type: ArticulationDriveType,
+        _type: ArticulationDriveType,
     ) {
         unsafe {
             PxArticulationJointReducedCoordinate_setDrive_mut(
-                self.as_mut_ptr(),
+                self.get_raw_mut(),
                 axis.into(),
                 stiffness,
                 damping,
                 max_force,
-                drive_type.into(),
+                _type.into(),
             )
         }
     }
 
-    /// Set the ArticulationMotion for an axis.
     pub fn set_motion(&mut self, axis: ArticulationAxis, motion: ArticulationMotion) {
         unsafe {
             PxArticulationJointReducedCoordinate_setMotion_mut(
-                self.as_mut_ptr(),
+                self.get_raw_mut(),
                 axis.into(),
                 motion.into(),
             );
         }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Section BUILDER
+////////////////////////////////////////////////////////////////////////////////
+
+// todo[tolsson]
+pub struct JointBuilder {
+    joint_type: ArticulationJointType,
+    axis: Vec3,
+    joint_frame: Mat4,
+    joint_limit: [f32; 2],
+}
+
+impl Default for JointBuilder {
+    fn default() -> Self {
+        Self {
+            joint_type: ArticulationJointType::Undefined,
+            axis: Vec3::unit_x(),
+            joint_frame: Mat4::identity(),
+            joint_limit: [-std::f32::consts::PI, std::f32::consts::PI],
+        }
+    }
+}
+
+impl JointBuilder {
+    pub fn build(&self, part: PartHandle) -> ArticulationJointReducedCoordinate {
+        let z_axis = self.axis == Vec3::unit_z();
+        let link = part.1 as *mut PxArticulationLink;
+
+        unsafe {
+            let joint = PxArticulationLink_getInboundJoint(link);
+
+            let mut joint = ArticulationJointReducedCoordinate::from_ptr(
+                joint as *mut PxArticulationJointReducedCoordinate,
+            );
+            joint.set_child_pose(Mat4::identity());
+            joint.set_parent_pose(self.joint_frame);
+
+            joint.set_type(self.joint_type);
+            match self.joint_type {
+                ArticulationJointType::Revolute => {
+                    let axis = if z_axis {
+                        ArticulationAxis::Swing2
+                    } else {
+                        ArticulationAxis::Twist
+                    };
+                    joint.set_motion(axis, ArticulationMotion::Limited);
+                    joint.set_limit(axis, self.joint_limit[0], self.joint_limit[1]);
+                }
+
+                ArticulationJointType::Spherical => {
+                    for axis in ArticulationAxis::angular_axes() {
+                        joint.set_motion(*axis, ArticulationMotion::Free);
+                    }
+                }
+                _ => { /* fixme */ }
+            }
+
+            joint
+        }
+    }
+
+    pub fn joint_type(mut self, joint_type: ArticulationJointType) -> Self {
+        self.joint_type = joint_type;
+        self
+    }
+
+    pub fn axis(mut self, axis: Vec3) -> Self {
+        self.axis = axis;
+        self
+    }
+
+    pub fn transform_from_parent(mut self, transform: Mat4) -> Self {
+        self.joint_frame = transform;
+        self
+    }
+
+    pub fn limit(mut self, lower: f32, upper: f32) -> Self {
+        self.joint_limit = [lower, upper];
+        self
+    }
+
+    pub fn get_joint_type(&self) -> ArticulationJointType {
+        self.joint_type
+    }
+
+    pub fn joint_transform(&self) -> Mat4 {
+        self.joint_frame
     }
 }

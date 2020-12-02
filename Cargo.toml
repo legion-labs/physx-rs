@@ -2,4 +2,5 @@
 members = [
     "physx",
     "physx-sys",
+    "physx-macros",
 ]

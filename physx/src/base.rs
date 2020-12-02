@@ -2,22 +2,13 @@
 Wrapper for PxBase.
  */
 
-use crate::traits::Class;
+use super::px_type::*;
 use enumflags2::BitFlags;
-
-pub(crate) use physx_sys::PxBase;
-
+use physx_macros::physx_type;
 use physx_sys::{
-    PxBaseFlag,
-    PxBaseFlags,
-    PxBase_getBaseFlags,
-    PxBase_getConcreteType,
-    PxBase_getConcreteTypeName,
-    PxBase_isReleasable,
-    PxBase_setBaseFlag_mut,
+    PxBase, PxBaseFlag, PxBaseFlags, PxBase_getBaseFlags, PxBase_getConcreteType,
+    PxBase_getConcreteTypeName, PxBase_isReleasable, PxBase_release_mut, PxBase_setBaseFlag_mut,
     PxBase_setBaseFlags_mut,
-    //PxBase is non-instatiable, and any objects that use this dtor should call it directly
-    //PxBase_release_mut,
 };
 
 /*******************************************************************************
@@ -53,7 +44,7 @@ pub enum ConcreteType {
     Articulation = 11,
     ArticulationReducedCoordinate = 12,
     ArticulationLink = 13,
-    ArticulationJoint = 14,
+    AticulationJoint = 14,
     ArticulationJointReducedCoordinate = 15,
     PruningStructure = 16,
     BvhStructure = 17,
@@ -81,7 +72,7 @@ impl From<u16> for ConcreteType {
             11 => Articulation,
             12 => ArticulationReducedCoordinate,
             13 => ArticulationLink,
-            14 => ArticulationJoint,
+            14 => AticulationJoint,
             15 => ArticulationJointReducedCoordinate,
             16 => PruningStructure,
             17 => BvhStructure,
@@ -97,37 +88,43 @@ impl From<u16> for ConcreteType {
 /*******************************************************************************
  * Section BASE                                                                *
  ******************************************************************************/
-impl<T> Base for T where T: Class<PxBase> + Sized {}
-pub trait Base: Class<PxBase> + Sized {
-    /// Get the name of the real type referenced by this pointer, or None if the returned string is not valid
-    fn get_concrete_type_name(&self) -> Option<&str> {
+
+#[physx_type]
+impl Base {
+    /// Release this object, invalidating the pointer
+    pub fn release(&mut self) {
         unsafe {
-            std::ffi::CStr::from_ptr(PxBase_getConcreteTypeName(self.as_ptr() as *const _) as _)
+            PxBase_release_mut(self.get_raw_mut());
+        }
+    }
+
+    /// Get the name of the real type referenced by this pointer, or None if the returned string is not valid
+    pub fn get_concrete_type_name(&self) -> Option<&str> {
+        unsafe {
+            std::ffi::CStr::from_ptr(PxBase_getConcreteTypeName(self.get_raw()) as _)
                 .to_str()
                 .ok()
         }
     }
 
-    /// Returns an enumerated value identifying the type.  This may return ConcreteType::Undefined
-    /// in surprising situations, notably this does not seem to work with `get_active_actors`.  Use
-    /// `get_type` for actors if possible.
-    fn get_concrete_type(&self) -> ConcreteType {
-        unsafe { PxBase_getConcreteType(self.as_ptr()).into() }
+    /// Returns an enumerated value identifying the type. You can match this against the raw values in ConcreteType to identify the type of this object
+    pub fn get_concrete_type(&self) -> ConcreteType {
+        unsafe { PxBase_getConcreteType(self.get_raw()).into() }
     }
 
     /// Set or unset the specified flag on this object.
-    fn set_base_flag(&mut self, flag: BaseFlag, value: bool) {
+    pub fn set_base_flag(&mut self, flag: BaseFlag, value: bool) {
         unsafe {
-            PxBase_setBaseFlag_mut(self.as_mut_ptr() as *mut _, flag.into(), value);
+            PxBase_setBaseFlag_mut(self.get_raw_mut(), flag.into(), value);
         }
     }
 
     /// Set the BaseFlags of this object. Note that replaces all flags currently
     /// on the object. Use `set_base_flag` to set individual flags.
-    fn set_base_flags(&mut self, in_flags: BitFlags<BaseFlag>) {
+    pub fn set_base_flags(&mut self, in_flags: BitFlags<BaseFlag>) {
         unsafe {
             PxBase_setBaseFlags_mut(
-                self.as_mut_ptr() as *mut _,
+                self.get_raw_mut(),
                 PxBaseFlags {
                     mBits: in_flags.bits(),
                 },
@@ -136,15 +133,31 @@ pub trait Base: Class<PxBase> + Sized {
     }
 
     /// Read the BaseFlags of this object
-    fn get_base_flags(&self) -> BitFlags<BaseFlag> {
-        let flags = unsafe { PxBase_getBaseFlags(self.as_ptr() as *const _) };
+    pub fn get_base_flags(&self) -> BitFlags<BaseFlag> {
+        let flags = unsafe { PxBase_getBaseFlags(self.get_raw()) };
         unsafe { BitFlags::new(flags.mBits) }
     }
 
     ////////////////////////////////////////////////////////////////////////////////
 
     /// Returns true if this object can be released, i.e., it is not subordinate.
-    fn is_releasable(&self) -> bool {
-        unsafe { PxBase_isReleasable(self.as_ptr() as *const _) }
+    pub fn is_releasable(&self) -> bool {
+        unsafe { PxBase_isReleasable(self.get_raw()) }
+    }
+
+    /// Checks if the concrete type of this object matches the string. N.B: This
+    /// is NOT equivalent to the PhysX `is_kind_of`, which accounts for derived
+    /// types. This function does exact matching.
+    pub fn is_type(&self, name: &str) -> bool {
+        self.get_concrete_type_name()
+            .map(|n| n == name)
+            .unwrap_or(false)
+    }
+
+    /// Checks if the concrete type of this object matches the string. N.B: This
+    /// is NOT equivalent to the PhysX `is_kind_of`, which accounts for derived
+    /// types. This function does exact matching.
+    pub fn is_type_enum(&self, _type: ConcreteType) -> bool {
+        self.get_concrete_type() == _type
     }
 }
