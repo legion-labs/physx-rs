@@ -11,7 +11,7 @@ use physx_sys::{
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct PxQuat {
-    obj: physx_sys::PxQuat,
+    pub(super) obj: physx_sys::PxQuat,
 }
 
 crate::DeriveClassForNewType!(PxQuat: PxQuat);
@@ -31,22 +31,6 @@ impl From<physx_sys::PxQuat> for PxQuat {
 impl Into<physx_sys::PxQuat> for PxQuat {
     fn into(self) -> physx_sys::PxQuat {
         self.obj
-    }
-}
-
-#[cfg(feature = "glam")]
-impl From<glam::Quat> for PxQuat {
-    fn from(quat: glam::Quat) -> Self {
-        let (x, y, z, w) = quat.into();
-        Self::new(x, y, z, w)
-    }
-}
-
-#[cfg(feature = "glam")]
-impl Into<glam::Quat> for PxQuat {
-    fn into(self) -> glam::Quat {
-        let physx_sys::PxQuat { x, y, z, w } = self.obj;
-        glam::Quat::from_xyzw(x, y, z, w)
     }
 }
 

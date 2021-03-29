@@ -42,21 +42,6 @@ impl Into<physx_sys::PxTransform> for PxTransform {
     }
 }
 
-#[cfg(feature = "glam")]
-impl From<glam::Mat4> for PxTransform {
-    fn from(mat: glam::Mat4) -> Self {
-        let (_, rotation, translation) = mat.to_scale_rotation_translation();
-        Self::from_translation_rotation(&translation.into(), &rotation.into())
-    }
-}
-
-#[cfg(feature = "glam")]
-impl Into<glam::Mat4> for PxTransform {
-    fn into(self) -> glam::Mat4 {
-        glam::Mat4::from_rotation_translation(self.rotation().into(), self.translation().into())
-    }
-}
-
 impl PxTransform {
     pub fn translation(&self) -> PxVec3 {
         self.obj.p.into()

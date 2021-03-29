@@ -4,8 +4,9 @@
 
 ## [Unreleased]
 
-- [PR#129](https://github.com/EmbarkStudios/physx-rs/pull/129) Upgrade glam
-  v0.12 -> v0.13, and make glam optional.
+- [PR#129](https://github.com/EmbarkStudios/physx-rs/pull/129) Glam is now an
+  optional dependency and has been updated. You can enable the `glam` feature
+  to continue to use `glam` with `physx-sys` types.
 
 ## [0.11.0]
 

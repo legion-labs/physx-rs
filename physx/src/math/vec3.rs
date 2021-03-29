@@ -10,7 +10,7 @@ use physx_sys::{
 #[derive(Copy, Clone)]
 #[repr(transparent)]
 pub struct PxVec3 {
-    obj: physx_sys::PxVec3,
+    pub(super) obj: physx_sys::PxVec3,
 }
 
 crate::DeriveClassForNewType!(PxVec3: PxVec3);
@@ -52,22 +52,6 @@ impl Into<physx_sys::PxExtendedVec3> for PxVec3 {
             y: self.obj.y as f64,
             z: self.obj.z as f64,
         }
-    }
-}
-
-#[cfg(feature = "glam")]
-impl From<glam::Vec3> for PxVec3 {
-    fn from(v: glam::Vec3) -> Self {
-        let (x, y, z) = v.into();
-        Self::new(x, y, z)
-    }
-}
-
-#[cfg(feature = "glam")]
-impl Into<glam::Vec3> for PxVec3 {
-    fn into(self) -> glam::Vec3 {
-        let physx_sys::PxVec3 { x, y, z } = self.obj;
-        glam::Vec3::new(x, y, z)
     }
 }
 
