@@ -1,5 +1,3 @@
-use glam::Vec3;
-
 use crate::traits::Class;
 
 use physx_sys::{
@@ -57,17 +55,19 @@ impl Into<physx_sys::PxExtendedVec3> for PxVec3 {
     }
 }
 
-impl From<Vec3> for PxVec3 {
-    fn from(v: Vec3) -> Self {
+#[cfg(feature = "glam")]
+impl From<glam::Vec3> for PxVec3 {
+    fn from(v: glam::Vec3) -> Self {
         let (x, y, z) = v.into();
         Self::new(x, y, z)
     }
 }
 
-impl Into<Vec3> for PxVec3 {
-    fn into(self) -> Vec3 {
+#[cfg(feature = "glam")]
+impl Into<glam::Vec3> for PxVec3 {
+    fn into(self) -> glam::Vec3 {
         let physx_sys::PxVec3 { x, y, z } = self.obj;
-        Vec3::new(x, y, z)
+        glam::Vec3::new(x, y, z)
     }
 }
 

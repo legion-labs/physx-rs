@@ -1,7 +1,5 @@
 use crate::{math::PxVec3, traits::Class};
 
-use glam::Quat;
-
 use physx_sys::{
     PxQuat_dot, PxQuat_getAngle, PxQuat_getAngle_1, PxQuat_getBasisVector0, PxQuat_getBasisVector1,
     PxQuat_getBasisVector2, PxQuat_getConjugate, PxQuat_getImaginaryPart, PxQuat_getNormalized,
@@ -36,17 +34,19 @@ impl Into<physx_sys::PxQuat> for PxQuat {
     }
 }
 
-impl From<Quat> for PxQuat {
-    fn from(quat: Quat) -> Self {
+#[cfg(feature = "glam")]
+impl From<glam::Quat> for PxQuat {
+    fn from(quat: glam::Quat) -> Self {
         let (x, y, z, w) = quat.into();
         Self::new(x, y, z, w)
     }
 }
 
-impl Into<Quat> for PxQuat {
-    fn into(self) -> Quat {
+#[cfg(feature = "glam")]
+impl Into<glam::Quat> for PxQuat {
+    fn into(self) -> glam::Quat {
         let physx_sys::PxQuat { x, y, z, w } = self.obj;
-        Quat::from_xyzw(x, y, z, w)
+        glam::Quat::from_xyzw(x, y, z, w)
     }
 }
 

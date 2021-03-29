@@ -35,6 +35,7 @@ impl From<(f64, f64, f64)> for PxExtendedVec3 {
     }
 }
 
+#[cfg(feature = "glam")]
 impl From<glam::Vec3> for PxExtendedVec3 {
     fn from(vec: glam::Vec3) -> Self {
         Self {

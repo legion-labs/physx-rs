@@ -3,8 +3,6 @@ use crate::{
     traits::Class,
 };
 
-use glam::Mat4;
-
 //pub use physx_sys::PxTransform;
 use physx_sys::{
     PxPlane, PxTransform_getInverse, PxTransform_getNormalized, PxTransform_inverseTransform,
@@ -44,16 +42,18 @@ impl Into<physx_sys::PxTransform> for PxTransform {
     }
 }
 
-impl From<Mat4> for PxTransform {
-    fn from(mat: Mat4) -> Self {
+#[cfg(feature = "glam")]
+impl From<glam::Mat4> for PxTransform {
+    fn from(mat: glam::Mat4) -> Self {
         let (_, rotation, translation) = mat.to_scale_rotation_translation();
         Self::from_translation_rotation(&translation.into(), &rotation.into())
     }
 }
 
-impl Into<Mat4> for PxTransform {
-    fn into(self) -> Mat4 {
-        Mat4::from_rotation_translation(self.rotation().into(), self.translation().into())
+#[cfg(feature = "glam")]
+impl Into<glam::Mat4> for PxTransform {
+    fn into(self) -> glam::Mat4 {
+        glam::Mat4::from_rotation_translation(self.rotation().into(), self.translation().into())
     }
 }
 
