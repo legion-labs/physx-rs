@@ -4,6 +4,9 @@
 
 ## [Unreleased]
 
+- [PR#129](https://github.com/EmbarkStudios/physx-rs/pull/129) Upgrade glam
+  v0.12 -> v0.13, and make glam optional.
+
 ## [0.11.0]
 
 - [PR#124](https://github.com/EmbarkStudios/physx-rs/pull/124) Upgrade glam
